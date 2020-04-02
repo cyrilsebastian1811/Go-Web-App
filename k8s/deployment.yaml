@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: dockerregistrykey
+type: kubernetes.io/dockerconfigjson
+data:
+    .dockerconfigjson: eyJhdXRocyI6eyJodHRwczovL2luZGV4LmRvY2tlci5pby92MS8iOiB7ImF1dGgiOiJjM1ZvWVhNeE5qQXlPazFoYm1sMFFESXdNVEk9In19fQ==
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: deployment-gowebapp
+    labels:
+        app: gowebapp
+spec:
+    replicas: 1
+    minReadySeconds: 10
+    revisionHistoryLimit: 3
+    strategy:
+        type: RollingUpdate
+        rollingUpdate:
+            maxSurge: 1
+            maxUnavailable: 1
+    selector:
+        matchLabels:
+            app: gowebapp
+    template:
+        metadata:
+            labels:
+                app: gowebapp
+        spec:
+            containers:
+            - name: gowebapp
+              image: suhas1602/gowebapp:dev2
+              resources:
+                  requests:
+                      cpu: 100m
+                      memory: 100Mi
+              ports:
+                  - containerPort: 8000
+              readinessProbe:
+                  httpGet:
+                      path: /
+                      port: 8000
+                  initialDelaySeconds: 10
+                  periodSeconds: 100
+              livenessProbe:
+                  httpGet:
+                      path: /
+                      port: 8000
+                  initialDelaySeconds: 10
+                  periodSeconds: 100
+            imagePullSecrets:
+            - name: dockerregistrykey
+---  
+apiVersion: v1
+kind: Service
+metadata:
+    name: lb-gowebapp
+    labels:
+        name: gowebapp
+spec:
+    type: LoadBalancer
+    ports:
+        - protocol: TCP
+          port: 8000
+          targetPort: 8000
+    selector:
+        app: gowebapp    
+
+
+                
